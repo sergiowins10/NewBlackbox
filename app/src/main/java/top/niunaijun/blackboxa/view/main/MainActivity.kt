@@ -64,7 +64,7 @@ class MainActivity : LoadingActivity() {
             initToolbarSubTitle()
 
             
-            checkStoragePermission()
+            // checkStoragePermission()
 
             
             checkVpnPermission()
