@@ -1,6 +1,5 @@
 package top.niunaijun.blackbox.fake.delegate;
 
-import android.app.IBinderSession;
 import android.app.IServiceConnection;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -15,17 +14,11 @@ import top.niunaijun.blackbox.utils.compat.BuildCompat;
 
 
 public class ServiceConnectionDelegate extends IServiceConnection.Stub {
-
-    private static final Map<IBinder, ServiceConnectionDelegate> sServiceConnectDelegate =
-            new HashMap<>();
-
+    private static final Map<IBinder, ServiceConnectionDelegate> sServiceConnectDelegate = new HashMap<>();
     private final IServiceConnection mConn;
     private final ComponentName mComponentName;
 
-    private ServiceConnectionDelegate(
-            IServiceConnection mConn,
-            ComponentName targetComponent
-    ) {
+    private ServiceConnectionDelegate(IServiceConnection mConn, ComponentName targetComponent) {
         this.mConn = mConn;
         this.mComponentName = targetComponent;
     }
@@ -34,96 +27,37 @@ public class ServiceConnectionDelegate extends IServiceConnection.Stub {
         return sServiceConnectDelegate.get(iBinder);
     }
 
-    public static IServiceConnection createProxy(
-            IServiceConnection base,
-            Intent intent
-    ) {
+    public static IServiceConnection createProxy(IServiceConnection base, Intent intent) {
         final IBinder iBinder = base.asBinder();
-
-        ServiceConnectionDelegate delegate =
-                sServiceConnectDelegate.get(iBinder);
-
+        ServiceConnectionDelegate delegate = sServiceConnectDelegate.get(iBinder);
         if (delegate == null) {
             try {
-                iBinder.linkToDeath(
-                        new IBinder.DeathRecipient() {
-                            @Override
-                            public void binderDied() {
-                                sServiceConnectDelegate.remove(iBinder);
-
-                                try {
-                                    iBinder.unlinkToDeath(this, 0);
-                                } catch (Exception ignored) {
-                                }
-                            }
-                        },
-                        0
-                );
+                iBinder.linkToDeath(new IBinder.DeathRecipient() {
+                    @Override
+                    public void binderDied() {
+                        sServiceConnectDelegate.remove(iBinder);
+                        iBinder.unlinkToDeath(this, 0);
+                    }
+                }, 0);
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
-
-            delegate =
-                    new ServiceConnectionDelegate(
-                            base,
-                            intent != null ? intent.getComponent() : null
-                    );
-
+            delegate = new ServiceConnectionDelegate(base, intent.getComponent());
             sServiceConnectDelegate.put(iBinder, delegate);
         }
-
         return delegate;
     }
 
     @Override
-    public void connected(
-            ComponentName name,
-            IBinder service
-    ) throws RemoteException {
+    public void connected(ComponentName name, IBinder service) throws RemoteException {
         connected(name, service, false);
     }
 
-    public void connected(
-            ComponentName name,
-            IBinder service,
-            boolean dead
-    ) throws RemoteException {
-
-        ComponentName componentName =
-                mComponentName != null ? mComponentName : name;
-
+    public void connected(ComponentName name, IBinder service, boolean dead) throws RemoteException {
         if (BuildCompat.isOreo()) {
-            BRIServiceConnectionO
-                    .get(mConn)
-                    .connected(componentName, service, dead);
+            BRIServiceConnectionO.get(mConn).connected(mComponentName, service, dead);
         } else {
-            mConn.connected(componentName, service);
+            mConn.connected(name, service);
         }
-    }
-
-    /*
-     * Android 16+
-     *
-     * New IServiceConnection callback:
-     *
-     * connected(
-     *     ComponentName,
-     *     IBinder,
-     *     IBinderSession,
-     *     boolean
-     * )
-     *
-     * BlackBox does not currently need the BinderSession itself,
-     * so forward the connection through the existing implementation.
-     */
-    @Override
-    public void connected(
-            ComponentName name,
-            IBinder service,
-            IBinderSession binderSession,
-            boolean dead
-    ) throws RemoteException {
-
-        connected(name, service, dead);
     }
 }
