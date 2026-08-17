@@ -92,7 +92,7 @@ class AppsRepository {
                         if ((installedApplication.flags and ApplicationInfo.FLAG_SYSTEM) != 0)
                                 continue
 
-                        if (!AbiUtils.isSupport(file)) continue
+                        // if (!AbiUtils.isSupport(file)) continue
 
                         
                         if (BlackBoxCore.get().isBlackBoxApp(installedApplication.packageName)) {
